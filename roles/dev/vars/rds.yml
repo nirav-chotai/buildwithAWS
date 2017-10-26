@@ -1,0 +1,8 @@
+rds:
+  Engine: "MySQL"
+  DBName: "MySQLDB"
+  MultiAZDatabase: "true"
+  DBUser: nobody
+  DBPassword: "MoXk87Cb0SYQay9T"
+  DBInstanceClass: db.t2.micro
+  DBAllocatedStorage: 10

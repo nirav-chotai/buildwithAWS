@@ -1,0 +1,146 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Conditions": {
+        "HasVPC": {
+            "Fn::Not" : [ {"Fn::Equals": [ "", { "Ref": "Vpc" } ] } ]
+        }
+    },
+    "Description": "Security groups template for AppServer and RDS",
+    "Parameters": {
+        "Vpc": {
+            "Description": "Name of an existing VPC",
+            "Type": "AWS::EC2::VPC::Id"
+        },
+        "ExternalIpAccess": {
+            "Description": "The public IP address or IP address space of the Jump Host.",
+            "Type": "String",
+            "Default": "103.250.31.46/32"
+        }
+    },
+    "Resources": {
+        "RDSSecurityGroup": {
+            "Properties": {
+                "GroupDescription": "DEMO RDS Security Group",
+                "SecurityGroupIngress": [
+                  { "IpProtocol": "tcp",
+                    "FromPort": "3306",
+                    "ToPort": "3306",
+                    "SourceSecurityGroupId": { "Ref": "AppServerSecurityGroup"
+                      } }
+                ],
+                "Tags": [
+                    { "Key": "Name", "Value": "DEMO RDS security group" },
+                    { "Key": "Infrastructure", "Value": "DEMO" },
+                    { "Key": "Owner", "Value": "Nirav" }
+                ],
+                "VpcId": {
+                    "Ref": "Vpc"
+                }
+            },
+            "Type": "AWS::EC2::SecurityGroup"
+        },
+        "AppServerSecurityGroup": {
+            "Properties": {
+                "GroupDescription": "DEMO App Server Security Group",
+                "SecurityGroupIngress": [
+                    {
+                        "FromPort": "443",
+                        "IpProtocol": "tcp",
+                        "ToPort": "443",
+                        "CidrIp" : "0.0.0.0/0"
+                    },
+                    {
+                        "FromPort": "8443",
+                        "IpProtocol": "tcp",
+                        "ToPort": "8443",
+                        "CidrIp" : "0.0.0.0/0"
+                    },
+                    {
+                        "FromPort": "80",
+                        "IpProtocol": "tcp",
+                        "ToPort": "80",
+                        "CidrIp" : "0.0.0.0/0"
+                    },
+                    {
+                        "FromPort": "22",
+                        "IpProtocol": "tcp",
+                        "ToPort": "22",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "DEMO App Server Security Group"
+                    },
+                    {
+                        "Key": "Infrastructure",
+                        "Value": "DEMO"
+                    },
+                    {
+                        "Key": "Owner",
+                        "Value": "DCO"
+                    }
+                ],
+                "VpcId": {
+                    "Fn::If": [
+                        "HasVPC",
+                        {
+                            "Ref": "Vpc"
+                        },
+                        {
+                            "Ref": "AWS::NoValue"
+                        }
+                    ]
+                }
+            },
+            "Type": "AWS::EC2::SecurityGroup"
+        },
+        "SecurityGroupEFS": {
+            "Properties": {
+                "GroupDescription": "security group controls access to AppServerSecurityGroup.",
+                "VpcId": {
+                    "Ref": "Vpc"
+                },
+                "Tags":  [
+                    {
+                        "Key": "Name",
+                        "Value": "DEMO EFS"
+                    }
+                ],
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "2049",
+                        "ToPort": "2049",
+                        "SourceSecurityGroupId": {
+                            "Ref": "AppServerSecurityGroup"
+                        }
+                    }
+                ]
+            },
+            "Type": "AWS::EC2::SecurityGroup"
+        }
+    },
+
+    "Outputs": {
+
+        "RDSSecurityGroup": {
+            "Description": "RDS Security Group",
+            "Value": { "Ref": "RDSSecurityGroup" }
+        },
+
+        "ASG": {
+            "Description": "DEMO AppServer Security Group",
+            "Value": { "Ref": "AppServerSecurityGroup" }
+        },
+
+        "SecurityGroupEFS": {
+            "Description": "EFS security group",
+            "Value": {
+                "Ref": "SecurityGroupEFS"
+            }
+        }
+
+    }
+}

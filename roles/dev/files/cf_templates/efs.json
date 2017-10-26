@@ -1,0 +1,128 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "EFS Template",
+  "Metadata": {
+    "Comments": [
+      {
+        "Ref": "Description"
+      },
+      ""
+    ]
+  },
+  "Parameters": {
+    "EFSSecurityGroup": {
+      "Description": "Security Group for EFS",
+      "Type": "String",
+      "Default": ""
+    },
+    "PrivateSubnetA": {
+      "Description": "PrivateSubnetA for EFS",
+      "Type": "String",
+      "Default": ""
+    },
+    "PrivateSubnetB": {
+      "Description": "PrivateSubnetB for EFS",
+      "Type": "String",
+      "Default": ""
+    },
+    "PrivateSubnetC": {
+      "Description": "PrivateSubnetC for EFS",
+      "Type": "String",
+      "Default": ""
+    },
+    "KmsKeyId": {
+      "NoEcho" : "true",
+      "Description": "The ID of the AWS KMS to use to encrypt the FileSystem.",
+      "Type": "String",
+      "Default": ""
+    }
+  },
+
+  "Resources": {
+    "EFSinternalsystems": {
+      "Type": "AWS::EFS::FileSystem",
+      "Properties": {
+        "Encrypted": true,
+        "KmsKeyId": { "Ref": "KmsKeyId" },
+        "FileSystemTags": [
+          {
+            "Key": "Name",
+            "Value": "EFSinternalsystems"
+          }
+        ]
+      }
+    },
+    "EFSMountTargetA": {
+      "Type": "AWS::EFS::MountTarget",
+      "Properties": {
+        "FileSystemId": {
+          "Ref": "EFSinternalsystems"
+        },
+        "SubnetId": {
+          "Ref": "PrivateSubnetA"
+        },
+        "SecurityGroups": [
+          {
+            "Ref": "EFSSecurityGroup"
+          }
+        ]
+      }
+    },
+    "EFSMountTargetB": {
+      "Type": "AWS::EFS::MountTarget",
+      "Properties": {
+        "FileSystemId": {
+          "Ref": "EFSinternalsystems"
+        },
+        "SubnetId": {
+          "Ref": "PrivateSubnetB"
+        },
+        "SecurityGroups": [
+          {
+            "Ref": "EFSSecurityGroup"
+          }
+        ]
+      }
+    },
+    "EFSMountTargetC": {
+      "Type": "AWS::EFS::MountTarget",
+      "Properties": {
+        "FileSystemId": {
+          "Ref": "EFSinternalsystems"
+        },
+        "SubnetId": {
+          "Ref": "PrivateSubnetC"
+        },
+        "SecurityGroups": [
+          {
+            "Ref": "EFSSecurityGroup"
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "EFSMountTargetAid": {
+      "Description": "ID of EFS Mount Target A",
+      "Value": {
+        "Ref": "EFSMountTargetA"
+      }
+    },
+    "EFSMountTargetBid": {
+      "Description": "ID of EFS Mount Target B",
+      "Value": {
+        "Ref": "EFSMountTargetB"
+      }
+    },
+    "EFSMountTargetCid": {
+      "Description": "ID of EFS Mount Target C",
+      "Value": {
+        "Ref": "EFSMountTargetC"
+      }
+    },
+    "EFS": {
+      "Description": "EFS FileSystemID for internalsystems",
+      "Value": {"Ref" : "EFSinternalsystems"}
+    }
+  }
+}

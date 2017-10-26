@@ -1,0 +1,651 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "AutoScalingGroup Template for App server",
+  "Metadata": {
+    "Comments": [
+      {
+        "Ref": "Description"
+      },
+      ""
+    ]
+  },
+  "Mappings": {
+        "S3Endpoints": {
+            "eu-central-1": {
+                "endpoint": "s3-eu-central-1.amazonaws.com"
+            },
+            "eu-west-1": {
+                "endpoint": "s3-eu-west-1.amazonaws.com"
+            },
+            "us-west-2": {
+                "endpoint": "s3-us-west-2.amazonaws.com"
+            }
+        }
+    },
+  "Parameters": {
+    "AppServerAMI": {
+      "Description": "AMI for the app server",
+      "Type": "String",
+      "Default": ""
+    },
+    "AppServerInstanceType": {
+      "Description": "AppServer instance type",
+      "Type": "String",
+      "Default": ""
+    },
+    "KeyName": {
+      "Description": "SSH key to use",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "Default": ""
+    },
+    "ASG": {
+      "Description": "DEMO Appserver SecurityGroup",
+      "Type": "String",
+      "Default": ""
+    },
+    "EFS": {
+      "Description": "ID of DEMO EFS internalsystems Filesystem",
+      "Type": "String",
+      "Default": ""
+    },
+    "AZs": {
+      "Type": "List<String>",
+      "Description": "List of Availability Zones with Public and Private Subnets",
+      "ConstraintDescription": "must be a comma-separated list of valid Availability Zones for the selected VPC",
+      "Default": ""
+    },
+    "AppServersInstanceMax": {
+      "Description": "AppServer Node EC2 instance max count",
+      "Type": "Number"
+    },
+    "AppServersInstanceMin": {
+      "Description": "AppServer Node EC2 instance min count",
+      "Type": "Number"
+    },
+    "VpcZ": {
+        "Type": "List<AWS::EC2::Subnet::Id>",
+        "Description": "The list of Public Subnets for your VPC",
+        "ConstraintDescription": "must be a comma-separated list of valid Public Subnets for the selected VPC",
+        "Default": ""
+    },
+    "TarballBucket": {
+      "Description": "S3 bucket for tarball",
+      "Type": "String",
+      "Default": ""
+    },
+    "TarballPath": {
+      "Description": "Path to Root tarball under the configbucket. Files from this folder will be taken by app server to chroot_env",
+      "Type": "String",
+      "Default": ""
+    },
+    "MySQLDatabase": {
+      "Description": "MySQLDatabase",
+      "Type": "String",
+      "Default": ""
+    },
+    "DBName": {
+      "Default": "MyDatabase",
+      "Description" : "MySQL database name",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "64",
+      "AllowedPattern" : "[a-zA-Z][a-zA-Z0-9]*",
+      "ConstraintDescription" : "must begin with a letter and contain only alphanumeric characters."
+    },
+    "DBMasterPassword": {
+      "NoEcho" : "true",
+      "Description": "Master password for both DBs",
+      "Type": "String",
+      "Default": ""
+    },
+    "DBMasterUsername": {
+      "NoEcho" : "true",
+      "Description": "Master username for both DBs",
+      "Type": "String",
+      "Default": ""
+    },
+    "Branch": {
+        "Description": "(Develop, etc...)",
+        "Type": "String",
+        "Default": "develop"
+    },
+    "Environment": {
+        "Description": "(dev, qa, prod, etc...)",
+        "Type": "String",
+        "Default": "dev"
+    },
+    "VpcName": {
+        "Description": "Name of an existing VPC",
+        "Type": "String",
+        "Default": ""
+    }
+  },
+  "Resources": {
+
+    "AppServerASG": {
+      "Properties": {
+        "AvailabilityZones": {
+          "Ref": "AZs"
+        },
+        "LaunchConfigurationName": {
+          "Ref": "AppServerLaunchConfig"
+        },
+        "MaxSize": {
+          "Ref": "AppServersInstanceMax"
+        },
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": {
+                    "Fn::Join": [
+                        ":",
+                        [
+                            {
+                                "Ref": "VpcName"
+                            },
+                            "SF",
+                            {
+                                "Ref": "Branch"
+                            },
+                            {
+                                "Ref": "Environment"
+                            }
+                        ]
+                    ]
+                },
+                "PropagateAtLaunch": true
+            }
+        ],
+        "MetricsCollection": [
+          {
+            "Granularity": "1Minute"
+          }
+        ],
+        "MinSize": {
+          "Ref": "AppServersInstanceMin"
+        },
+        "TerminationPolicies": [
+          "OldestInstance",
+          "ClosestToNextInstanceHour"
+        ],
+        "VPCZoneIdentifier": {
+          "Ref": "VpcZ"
+        }
+      },
+      "CreationPolicy" : {
+        "ResourceSignal" : {
+          "Timeout" : "PT60M",
+          "Count"   : { "Ref" : "AppServersInstanceMin" }
+        }
+      },
+      "UpdatePolicy": {
+        "AutoScalingRollingUpdate": {
+          "MinInstancesInService": "1",
+          "MaxBatchSize": "1",
+          "PauseTime" : "PT60M",
+          "WaitOnResourceSignals": "true"
+        }
+      },
+      "Type": "AWS::AutoScaling::AutoScalingGroup"
+    },
+    "ScaleOutPolicy": {
+      "Type": "AWS::AutoScaling::ScalingPolicy",
+      "Properties": {
+        "AdjustmentType": "ChangeInCapacity",
+        "PolicyType": "SimpleScaling",
+        "Cooldown": 1200,
+        "AutoScalingGroupName": {
+          "Ref": "AppServerASG"
+        },
+        "ScalingAdjustment": 1
+      }
+    },
+    "ScaleInPolicy": {
+      "Type": "AWS::AutoScaling::ScalingPolicy",
+      "Properties": {
+        "AdjustmentType": "ChangeInCapacity",
+        "PolicyType": "SimpleScaling",
+        "Cooldown": 1200,
+        "AutoScalingGroupName": {
+          "Ref": "AppServerASG"
+        },
+        "ScalingAdjustment": -1
+      }
+    },
+    "DEMODataBucket": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain"
+    },
+    "DEMODataBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "DEMODataBucket"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:PutObject"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:s3:::",
+                    {
+                        "Ref": "DEMODataBucket"
+                    },
+                    "/*"
+                  ]
+                ]
+              },
+              "Principal": "*",
+              "Condition": {
+                "StringNotEquals": {
+                  "s3:x-amz-server-side-encryption": "AES256"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "DEMOLogsBucket": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain"
+    },
+    "AppServerLaunchConfig": {
+      "Metadata": {     
+          "AWS::CloudFormation::Init" : {
+            "configSets" : {
+              "InstallAndRun" : [ "Install", "Configure" ]
+            },
+
+            "Install" : {
+              "packages" : {
+                "yum" : {
+                  "mysql"        : [],
+                  "mysql-server" : [],
+                  "mysql-libs"   : [],
+                  "httpd"        : [],
+                  "php"          : [],
+                  "php-mysql"    : []
+                }
+              },
+  
+              "files" : {
+                "/var/www/html/index.php" : {
+                  "content" : { "Fn::Join" : [ "", [
+                    "<html>\n",
+                    "  <head>\n",
+                    "    <title>AWS CloudFormation PHP Sample</title>\n",
+                    "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=ISO-8859-1\">\n",
+                    "  </head>\n",
+                    "  <body>\n",
+                    "    <h1>Welcome to the AWS CloudFormation PHP Sample</h1>\n",
+                    "    <p/>\n",
+                    "    <?php\n",
+                    "      // Print out the current data and time\n",
+                    "      print \"The Current Date and Time is: <br/>\";\n",
+                    "      print date(\"g:i A l, F j Y.\");\n",
+                    "    ?>\n",
+                    "    <p/>\n",
+                    "    <?php\n",
+                    "      // Setup a handle for CURL\n",
+                    "      $curl_handle=curl_init();\n",
+                    "      curl_setopt($curl_handle,CURLOPT_CONNECTTIMEOUT,2);\n",
+                    "      curl_setopt($curl_handle,CURLOPT_RETURNTRANSFER,1);\n",
+                    "      // Get the hostname of the intance from the instance metadata\n",
+                    "      curl_setopt($curl_handle,CURLOPT_URL,'http://169.254.169.254/latest/meta-data/public-hostname');\n",
+                    "      $hostname = curl_exec($curl_handle);\n",
+                    "      if (empty($hostname))\n",
+                    "      {\n",
+                    "        print \"Sorry, for some reason, we got no hostname back <br />\";\n",
+                    "      }\n",
+                    "      else\n",
+                    "      {\n",
+                    "        print \"Server = \" . $hostname . \"<br />\";\n",
+                    "      }\n",
+                    "      // Get the instance-id of the intance from the instance metadata\n",
+                    "      curl_setopt($curl_handle,CURLOPT_URL,'http://169.254.169.254/latest/meta-data/instance-id');\n",
+                    "      $instanceid = curl_exec($curl_handle);\n",
+                    "      if (empty($instanceid))\n",
+                    "      {\n",
+                    "        print \"Sorry, for some reason, we got no instance id back <br />\";\n",
+                    "      }\n",
+                    "      else\n",
+                    "      {\n",
+                    "        print \"EC2 instance-id = \" . $instanceid . \"<br />\";\n",
+                    "      }\n",
+                    "      $Database   = \"", {"Ref" : "MySQLDatabase"}, "\";\n",
+                    "      $DBUser     = \"", {"Ref" : "DBMasterUsername"}, "\";\n",
+                    "      $DBPassword = \"", {"Ref" : "DBMasterPassword"}, "\";\n",
+                    "      print \"Database = \" . $Database . \"<br />\";\n",
+                    "      $dbconnection = mysql_connect($Database, $DBUser, $DBPassword)\n",
+                    "                      or die(\"Could not connect: \" . mysql_error());\n",
+                    "      print (\"Connected to $Database successfully\");\n",
+                    "      mysql_close($dbconnection);\n",
+                    "    ?>\n",
+                    "    <h2>PHP Information</h2>\n",
+                    "    <p/>\n",
+                    "    <?php\n",
+                    "      phpinfo();\n",
+                    "    ?>\n",
+                    "  </body>\n",
+                    "</html>\n"
+                  ]]},
+                  "mode"  : "000600",
+                  "owner" : "apache",
+                  "group" : "apache"
+                },
+  
+                "/tmp/setup.mysql" : {
+                  "content" : { "Fn::Join" : ["", [
+                    "CREATE DATABASE ", { "Ref" : "DBName" }, ";\n",
+                    "GRANT ALL ON ", { "Ref" : "DBName" }, ".* TO '", { "Ref" : "DBMasterUsername" }, "'@localhost IDENTIFIED BY '", { "Ref" : "DBMasterPassword" }, "';\n"
+                    ]]},
+                  "mode"  : "000400",
+                  "owner" : "root",
+                  "group" : "root"
+                },
+                "/etc/cfn/cfn-hup.conf" : {
+                  "content" : { "Fn::Join" : ["", [
+                    "[main]\n",
+                    "stack=", { "Ref" : "AWS::StackId" }, "\n",
+                    "region=", { "Ref" : "AWS::Region" }, "\n"
+                  ]]},
+                  "mode"    : "000400",
+                  "owner"   : "root",
+                  "group"   : "root"
+                },
+  
+                "/etc/cfn/hooks.d/cfn-auto-reloader.conf" : {
+                  "content": { "Fn::Join" : ["", [
+                    "[cfn-auto-reloader-hook]\n",
+                    "triggers=post.update\n",
+                    "path=Resources.AppServerLaunchConfig.Metadata.AWS::CloudFormation::Init\n",
+                    "action=/opt/aws/bin/cfn-init -v ",
+                    "         --stack ", { "Ref" : "AWS::StackName" },
+                    "         --resource AppServerLaunchConfig ",
+                    "         --configsets InstallAndRun ",
+                    "         --region ", { "Ref" : "AWS::Region" }, "\n",
+                    "runas=root\n"
+                  ]]},
+                  "mode"    : "000400",
+                  "owner"   : "root",
+                  "group"   : "root"
+                }
+              },
+  
+              "services" : {
+                "sysvinit" : {  
+                  "mysqld"  : { "enabled" : "true", "ensureRunning" : "true" },
+                  "httpd"   : { "enabled" : "true", "ensureRunning" : "true" },
+                  "cfn-hup" : { "enabled" : "true", "ensureRunning" : "true",
+                                "files" : ["/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf"]}
+                }
+              }
+            },
+  
+            "Configure" : {
+              "commands" : {
+                "01_set_mysql_root_password" : {
+                  "command" : { "Fn::Join" : ["", ["mysqladmin -u root password '", { "Ref" : "DBMasterPassword" }, "'"]]},
+                  "test" : { "Fn::Join" : ["", ["$(mysql ", { "Ref" : "DBName" }, " -u root --password='", { "Ref" : "DBMasterPassword" }, "' >/dev/null 2>&1 </dev/null); (( $? != 0 ))"]]}
+                },
+                "02_create_database" : {
+                  "command" : { "Fn::Join" : ["", ["mysql -u root --password='", { "Ref" : "DBMasterPassword" }, "' < /tmp/setup.mysql"]]},
+                  "test" : { "Fn::Join" : ["", ["$(mysql ", { "Ref" : "DBName" }, " -u root --password='", { "Ref" : "DBMasterPassword" }, "' >/dev/null 2>&1 </dev/null); (( $? != 0 ))"]]}
+                }
+              }
+            }
+        }
+      },
+      "Properties": {
+        "BlockDeviceMappings": [{
+            "DeviceName": "/dev/xvdf",
+            "Ebs": {
+              "VolumeSize": "1000",
+              "VolumeType": "st1",
+              "Encrypted": true
+            }
+          }
+        ],
+        "AssociatePublicIpAddress": "true",
+        "IamInstanceProfile": {
+          "Ref": "DEMOAppServerInstanceProfile"
+        },
+        "ImageId": {
+          "Ref": "AppServerAMI"
+        },
+        "InstanceType": {
+          "Ref": "AppServerInstanceType"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "SecurityGroups": [{
+            "Ref": "ASG"
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "", [
+                "#!/bin/sh\n",
+                "exec 1<&-; exec 2<&- ; exec 1<>/tmp/setup.log ; exec 2>&1\n",
+                "/usr/bin/apt-get update\n",
+                "/usr/bin/apt-get upgrade\n",
+                "/usr/bin/apt-get -y install python-setuptools less vim\n",
+                "/usr/bin/apt-get -y install curl\n",
+                "/usr/bin/apt-get -y install python-pip\n",
+                "/usr/bin/apt-get -y install nfs-common\n",
+                "/usr/bin/pip install awscli\n",
+                "/usr/bin/pip install aws-ec2-assign-elastic-ip\n",
+                "/usr/local/bin/aws-ec2-assign-elastic-ip\n",
+                "/bin/mkdir -p /efs\n",
+                "/bin/mkdir -p /EFSinternalsystems\n",
+                "echo $(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone).", {
+                  "Ref": "EFS"
+                }, ".efs.", {
+                  "Ref": "AWS::Region"
+                }, ".amazonaws.com:/ /EFSinternalsystems nfs defaults,nfsvers=4,minorversion=1 0 0 >> /etc/fstab\n",
+                "/bin/mount /EFSinternalsystems\n",
+                "/bin/mkdir -p /EFSinternalsystems/var\n",
+                "echo ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDqKE7tU8TFMyfsFxRPGR4r2av/HPF1ADkjqtAZrnFwLwUbnBz/caOCWb9MGv7YotdLLceibsvgPnNIhH80pQWxWaalJ5F86SWC+R7sWuK8bYXjgJYeCpHhskVxk0r5+M52ZMrWCrTHYs1XazjCwpPC0CHstkOdNlW9PeOebNXJXm2LNyW7rzT9nX8Wo0doAlFFxuHuTDVtFV6WxCOrqFb5FHPa78fO1K5a4/p7OCjOz/jgvMbriMg2zvFrHDRUvW4a5V5eWsMRdQE3328TouiekWiDXrhzC8v6AAL5kvYICdnTrVAoSdlZrH0WtRorTSDsY0ErZNrGm1v2/UAbGyWV >> /home/admin/.ssh/authorized_keys\n",
+                "/usr/bin/easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz\n",
+
+                "# Install the files and packages from the metadata\n",
+                "/opt/aws/bin/cfn-init -v ",
+                "         --stack ", { "Ref" : "AWS::StackName" },
+                "         --resource AppServerLaunchConfig ",
+                "         --configsets InstallAndRun ",
+                "         --region ", { "Ref" : "AWS::Region" }, "\n",
+   
+                "# Signal the status from cfn-init\n",
+                "/opt/aws/bin/cfn-signal -e $? ",
+                "         --stack ", { "Ref" : "AWS::StackName" },
+                "         --resource AppServerASG ",
+                "         --region ", { "Ref" : "AWS::Region" }, "\n"
+              ]
+            ]
+          }
+        }
+      },
+      "Type": "AWS::AutoScaling::LaunchConfiguration"
+    },
+    "DEMOAppServerInstanceProfile": {
+      "Properties": {
+        "Path": "/demo/appserver/",
+        "Roles": [{
+            "Ref": "DEMOAppServerRole"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::InstanceProfile"
+    },
+    "DEMOAppServerRole": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [{
+              "Action": [
+                "sts:AssumeRole"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "ec2.amazonaws.com"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Path": "/demo/appserver/",
+        "Policies": [{
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [{
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents",
+                    "logs:DescribeLogStreams"
+                  ],
+                  "Resource": [
+                    "arn:aws:logs:*:*:*"
+                  ]
+                }
+              ]
+            },
+            "PolicyName": "AllowCloudWatchLogs"
+          }, {
+            "PolicyDocument": {
+              "Statement": [{
+                  "Action": [
+                    "s3:ListAllMyBuckets"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    "arn:aws:s3:::*"
+                  ]
+                }, {
+                  "Action": [
+                    "s3:GetBucketLocation",
+                    "s3:ListBucket"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [{
+                      "Fn::Join": [
+                        "", [
+                          "arn:aws:s3:::", {
+                            "Ref": "TarballBucket"
+                          }
+                        ]
+                      ]
+                    }, {
+                      "Fn::Join": [
+                        "", [
+                          "arn:aws:s3:::", {
+                            "Ref": "DEMODataBucket"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                }, {
+                  "Action": [
+                    "s3:GetObject",
+                    "s3:GetObjectVersion"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [{
+                      "Fn::Join": [
+                        "", [
+                          "arn:aws:s3:::", {
+                            "Ref": "TarballBucket"
+                          },
+                          "/*"
+                        ]
+                      ]
+                    }, {
+                      "Fn::Join": [
+                        "", [
+                          "arn:aws:s3:::", {
+                            "Ref": "DEMODataBucket"
+                          },
+                          "/*"
+                        ]
+                      ]
+                    }
+                  ]
+                }, {
+                  "Action": [
+                    "s3:PutObject",
+                    "s3:DeleteObject"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [{
+                      "Fn::Join": [
+                        "", [
+                          "arn:aws:s3:::", {
+                            "Ref": "DEMODataBucket"
+                          },
+                          "/*"
+                        ]
+                      ]
+                    }
+                  ]
+                }, {
+                  "Action": [
+                    "s3:List*",
+                    "s3:PutObject",
+                    "s3:DeleteObject"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [{
+                      "Fn::Join": ["", ["arn:aws:s3:::", { "Ref": "DEMOLogsBucket" } ]]
+                    }, {
+                      "Fn::Join": ["", ["arn:aws:s3:::", { "Ref": "DEMOLogsBucket" }, "/*"]]
+                    }
+                  ]
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "s3-access"
+          }, {
+            "PolicyDocument": {
+              "Statement": [{
+                  "Action": [
+                    "cloudformation:DescribeStackResource",
+                    "ec2:DescribeTags",
+                    "cloudwatch:PutMetricData"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    "*"
+                  ]
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "cfninit"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Role"
+    }
+  },
+  "Outputs": {
+    "DEMOAppServerRole" : {
+      "Description": "DEMOAppServerRole IAM role.",
+      "Value": {
+        "Ref": "DEMOAppServerRole"
+      }
+    }
+  }
+}

@@ -1,0 +1,49 @@
+- name: "Generate VPC template"
+  template:
+    src: "templates/vpc.json.template"
+    dest: "{{ temp_dir_pl }}/{{ cloudformation.template_name.vpc }}"
+
+- name: "Generate VPC template config"
+  template:
+    src: "templates/vpc.json.config.template"
+    dest: "{{ temp_dir_pl }}/{{ cloudformation.config_name.vpc }}"
+
+- copy:
+    src: "cf_templates/sg.json"
+    dest: "{{ temp_dir_pl }}/{{ cloudformation.template_name.sg }}"
+
+- name: "Generate Security Groups template config"
+  template:
+    src: "templates/sg.json.config.template"
+    dest: "{{ temp_dir_pl }}/{{ cloudformation.config_name.sg }}"
+
+- copy:
+    src: "cf_templates/kms.json"
+    dest: "{{ temp_dir_pl }}/{{ cloudformation.template_name.kms }}"
+
+- name: "Generate KMS template config"
+  template:
+    src: "templates/kms.json.config.template"
+    dest: "{{ temp_dir_pl }}/{{ cloudformation.config_name.kms }}"
+
+- copy:
+    src: "cf_templates/rds.json"
+    dest: "{{ temp_dir_pl }}/{{ cloudformation.template_name.rds }}"
+
+- name: "Generate RDS template config"
+  template:
+    src: "templates/rds.json.config.template"
+    dest: "{{ temp_dir_pl }}/{{ cloudformation.config_name.rds }}"
+
+- copy:
+    src: "cf_templates/efs.json"
+    dest: "{{ temp_dir_pl }}/{{ cloudformation.template_name.efs }}"
+
+- copy:
+    src: "cf_templates/asg.json"
+    dest: "{{ temp_dir_pl }}/{{ cloudformation.template_name.asg }}"
+
+- name: "Generate AutoScalingGroup with app server template config"
+  template:
+    src: "templates/asg.json.config.template"
+    dest: "{{ temp_dir_pl }}/{{ cloudformation.config_name.asg }}"

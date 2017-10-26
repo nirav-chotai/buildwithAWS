@@ -1,0 +1,10 @@
+asg:
+  AppServerInstanceType: t2.micro
+  KeyName: "demo-us-east-1"
+  AppServersInstanceMax: 1
+  AppServersInstanceMin: 1
+  TarballBucket: demo-new-data
+  TarballPath: demo-app-files
+  DBMasterUsername: nobody
+  DBMasterPassword: "MoXk87Cb0SYQay9T"
+  DBName: "MySQLDB"

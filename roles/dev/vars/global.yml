@@ -1,0 +1,22 @@
+---
+# Contents of this file are loaded into the context of all playbook runs
+# Documentation: http://docs.ansible.com/ansible/playbooks_variables.html#variable-examples
+# TODO: Create this file with the correct values for the context
+# The following values are determined by the deployment and are used to provided context:
+#   account.name
+#   account.region
+#   vpc.name
+
+private:
+  # This private namespace is supposed to be used only within this file
+  # The caller need to be able to specify account and vpc member variables, which
+  # allows to deploy provisioning data to a specific account, region, and vpc.
+  aws_account_name: "demo"
+  aws_region: "us-east-1"
+
+account:
+  name: "nirav_demo"
+  region: "us-east-1"
+
+vpc:
+  name: "demo_vpc"

@@ -1,0 +1,55 @@
+---
+# tasks file for dev
+- include_vars: global.yml
+
+- include: 0_create_task_artifacts.yml
+
+- include: 1_retrieve_ami.yml
+
+- include_vars: vpc.yml
+
+- include_vars: kms.yml
+
+- include_vars: rds.yml
+
+- include_vars: asg.yml
+
+- name: "Generate CodePipeline Template"
+  template:
+    src: "templates/code-pipeline.yml.template"
+    dest: "{{ temp_dir_cf }}/{{ cloudformation.template_name.pipeline }}"
+
+- include: 2_generate_vpc_template.yml
+
+- include: 3_zip_dir.yml
+  vars:
+    dir: "{{ temp_dir_pl }}"
+    name: "{{ code_pipeline.S3_prefix_artifact }}"
+
+- name: "Copy documents to {{ result_dir }}"
+  shell: "cp {{ temp_dir_pl }}/{{ code_pipeline.S3_prefix_artifact }} {{ result_dir }}/{{ code_pipeline.S3_prefix_artifact }}"
+
+- name: "Copy documents to {{ result_dir }}"
+  shell: "cp {{ temp_dir_cf }}/{{ cloudformation.template_name.pipeline }} {{ result_dir }}/{{ cloudformation.template_name.pipeline }}"
+
+- name: Create DEMO CodePipline stack
+  cloudformation:
+    stack_name: "{{ cloudformation.stack_name.pipeline }}"
+    state: "present"
+    region: "{{ account.region }}"
+    disable_rollback: true
+    template: "{{ result_dir }}/{{ cloudformation.template_name.pipeline }}"
+
+- name: "Create S3 bucket and enable versioning"
+  s3_bucket:
+    name: "{{ code_pipeline.S3_bucket_name }}"
+    versioning: yes
+
+- name: "Upload {{ result_dir }}/{{ code_pipeline.S3_prefix_artifact }} to bucket {{ code_pipeline.S3_bucket_name }}"
+  aws_s3:
+    bucket: "{{ code_pipeline.S3_bucket_name }}"
+    object: "{{ code_pipeline.S3_prefix_artifact }}"
+    src: "{{ result_dir }}/{{ code_pipeline.S3_prefix_artifact }}"
+    mode: put
+
+- include: 4_destroy_task_artifact.yml

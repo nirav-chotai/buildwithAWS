@@ -1,0 +1,120 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+
+  "Description": "RDS Template",
+
+  "Metadata": {
+  },
+
+  "Parameters": {
+    "DBName": {
+      "Default": "myDatabase",
+      "Description" : "MySQL database name",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "64",
+      "AllowedPattern" : "[a-zA-Z][a-zA-Z0-9]*",
+      "ConstraintDescription" : "must begin with a letter and contain only alphanumeric characters."
+    },
+
+    "DBUser": {
+      "NoEcho": "true",
+      "Description" : "Username for MySQL database access",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "16",
+      "AllowedPattern" : "[a-zA-Z][a-zA-Z0-9]*",
+      "ConstraintDescription" : "must begin with a letter and contain only alphanumeric characters."
+    },
+
+    "DBPassword": {
+      "NoEcho": "true",
+      "Description" : "Password for MySQL database access",
+      "Type": "String",
+      "MinLength": "8",
+      "MaxLength": "41",
+      "AllowedPattern" : "[a-zA-Z0-9]*",
+      "ConstraintDescription" : "must contain only alphanumeric characters."
+    },
+
+    "DBAllocatedStorage": {
+      "Default": "5",
+      "Description" : "The size of the database (Gb)",
+      "Type": "Number",
+      "MinValue": "5",
+      "MaxValue": "1024",
+      "ConstraintDescription" : "must be between 5 and 1024Gb."
+    },
+
+    "DBInstanceClass": {
+      "Description" : "The database instance type",
+      "Type": "String",
+      "Default": "db.t2.small",
+      "AllowedValues" : [ "db.t1.micro", "db.m3.medium", "db.t2.micro", "db.t2.small", "db.t2.medium", "db.t2.large"],
+      "ConstraintDescription" : "must select a valid database instance type."
+    },
+
+    "MultiAZDatabase": {
+      "Default": "true",
+      "Description" : "Create a Multi-AZ MySQL Amazon RDS database instance",
+      "Type": "String",
+      "AllowedValues" : [ "true", "false" ],
+      "ConstraintDescription" : "must be either true or false."
+    },
+
+    "RDSSecurityGroups": {
+      "Description": "The Security Group that allows communication to RDS.",
+      "Type" : "List<AWS::EC2::SecurityGroup::Id>"
+    },
+
+    "Engine" : {
+      "Description": "Database Engine",
+      "Type" : "String",
+      "Default": "MySQL"
+    },
+
+    "PrivateSubnetA": {
+      "Description": "Private subnet A ID for the VPC.",
+      "Type" : "String"
+    },
+
+    "PrivateSubnetB": {
+      "Description": "Private subnet B ID for the VPC.",
+      "Type" : "String"
+    }
+  },
+
+  "Resources": {
+    "MySQLDatabase": {
+      "Type": "AWS::RDS::DBInstance",
+      "Properties": {
+        "DBSubnetGroupName" : { "Ref" : "RDSSubnetGroup" },
+        "Engine" : { "Ref": "Engine" },
+        "DBName" : { "Ref": "DBName" },
+        "MultiAZ" : { "Ref": "MultiAZDatabase" },
+        "MasterUsername": { "Ref": "DBUser" },
+        "MasterUserPassword": { "Ref" : "DBPassword" },
+        "DBInstanceClass": { "Ref" : "DBInstanceClass" },
+        "AllocatedStorage": { "Ref" : "DBAllocatedStorage" },
+        "VPCSecurityGroups": { "Ref" : "RDSSecurityGroups" }
+      }
+    },
+
+    "RDSSubnetGroup" : {
+      "Type" : "AWS::RDS::DBSubnetGroup",
+      "Properties" : {
+        "DBSubnetGroupDescription" : "VPC subnet group for rds db to use",
+        "SubnetIds" : [ { "Ref": "PrivateSubnetA" }, { "Ref": "PrivateSubnetB" } ]
+      }
+    }
+  },
+
+  "Outputs": {
+    "MySQLDatabase": {
+      "Description": "Endpoint Address of the RDS instance.",
+      "Value": {
+        "Fn::GetAtt": [ "MySQLDatabase", "Endpoint.Address" ]
+      }
+    }
+  }
+}

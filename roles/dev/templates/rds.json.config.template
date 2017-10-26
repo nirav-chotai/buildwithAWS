@@ -1,0 +1,11 @@
+{
+  "Parameters" : {
+    "Engine" : "{{ rds.Engine }}",
+    "DBName" : "{{ rds.DBName }}",
+    "MultiAZDatabase" : "{{ rds.MultiAZDatabase }}",
+    "DBUser": "{{ rds.DBUser }}",
+    "DBPassword": "{{ rds.DBPassword }}",
+    "DBInstanceClass": "{{ rds.DBInstanceClass }}",
+    "DBAllocatedStorage": "{{ rds.DBAllocatedStorage }}"
+  }
+}

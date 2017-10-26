@@ -1,0 +1,16 @@
+---
+# Ansible version required: 2.3.0-100
+# -------------------------------------
+# Execute: ansible-playbook -vvv ./playbooks/install_dependencies.yml
+# -------------------------------------
+- hosts: localhost
+  gather_facts: no
+  connection: local
+  become: true
+  tasks:
+    - name: install python and other dependencies
+      apt: name={{ item }} state=present update_cache=yes
+      with_items:
+        - python2.7
+        - python-boto
+        - awscli

@@ -1,0 +1,42 @@
+code_pipeline:
+  email:                  niravchotai.ce@gmail.com
+  name:                   demo-deploy
+  S3_bucket_name:         demo-new-data-pipeline-{{ account.region }}
+  S3_prefix_artifact:     demo-deploy-package.zip
+
+cloudformation:
+  stack_name:
+    pipeline:                         DEMO-PIPELINE
+    vpc:                              DEMO-VPC
+    ansible:                          DEMO-ANSIBLE
+    bastion:                          DEMO-Bastion
+    kms:                              DEMO-KMS
+    rds:                              DEMO-RDS
+    redis:                            DEMO-Redis
+    sg:                               DEMO-SG
+    efs:                              DEMO-EFS
+    alb:                              DEMO-ALB
+    asg:                              DEMO-ASG-AppServer
+  template_name:
+    pipeline:                         demo-pipeline-template.json
+    vpc:                              demo-vpc-template.json
+    ansible:                          demo-ansible-template.json
+    bastion:                          demo-bastion-template.json
+    kms:                              demo-kms-template.json
+    rds:                              demo-rds-template.json
+    redis:                            demo-redis-template.json
+    sg:                               demo-sg-template.json
+    efs:                              demo-efs.json
+    alb:                              demo-alb-template.json
+    asg:                              demo-asg-template.json
+  config_name:
+    vpc:                              demo-vpc-config.json
+    ansible:                          demo-ansible-config.json
+    bastion:                          demo-bastion-config.json
+    kms:                              demo-kms-config.json
+    rds:                              demo-rds-config.json
+    redis:                            demo-redis-config.json
+    sg:                               demo-sg-config.json
+    efs:                              demo-efs-config.json
+    alb:                              demo-alb-config.json
+    asg:                              demo-asg-config.json

@@ -1,0 +1,305 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  AWS CloudFormation DEMO Template Continuous Delievery: This template
+  builds an AWS CodePipeline pipeline that implements a continuous delivery release
+  process for AWS CloudFormation stacks. Submit a CloudFormation source artifact
+  to an Amazon S3 location before building the pipeline. The pipeline uses the
+  artifact to automatically create stacks and change sets.
+  **WARNING** This template creates an Amazon EC2 instance. You will be billed
+  for the AWS resources used when you create a stack using this template.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "CodePipeline Settings"
+        Parameters:
+          - {{ code_pipeline.name }}
+          - {{ code_pipeline.S3_bucket_name }}
+          - {{ code_pipeline.S3_prefix_artifact }}
+      - Label:
+          default: "DEMO VPC Stack Settings"
+        Parameters:
+          - {{ cloudformation.stack_name.vpc }}
+          - {{ cloudformation.template_name.vpc }}
+          - {{ cloudformation.config_name.vpc }}
+      - Label:
+          default: "DEMO KMS Stack Settings"
+        Parameters:
+          - {{ cloudformation.stack_name.kms }}
+          - {{ cloudformation.template_name.kms }}
+          - {{ cloudformation.config_name.kms }}
+      - Label:
+          default: "DEMO SecuritGroups Stack Settings"
+        Parameters:
+          - {{ cloudformation.stack_name.sg }}
+          - {{ cloudformation.template_name.sg }}
+          - {{ cloudformation.config_name.sg }}
+      - Label:
+          default: "DEMO RDS Stack Settings"
+        Parameters:
+          - {{ cloudformation.stack_name.rds }}
+          - {{ cloudformation.template_name.rds }}
+          - {{ cloudformation.config_name.rds }}
+      - Label:
+          default: "DEMO EFS Stack Settings"
+        Parameters:
+          - {{ cloudformation.stack_name.efs }}
+          - {{ cloudformation.template_name.efs }}
+          - {{ cloudformation.config_name.efs }}
+      - Label:
+          default: "DEMO AutoScalingGroup Stack Settings"
+        Parameters:
+          - {{ cloudformation.stack_name.asg }}
+          - {{ cloudformation.template_name.asg }}
+          - {{ cloudformation.config_name.asg }}
+
+Resources:
+  ArtifactStoreBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Location: !Ref 'ArtifactStoreBucket'
+        Type: S3
+      DisableInboundStageTransitions: []
+      Name: {{ code_pipeline.name }}
+      RoleArn: !GetAtt [PipelineRole, Arn]
+      Stages:
+        - Name: S3Source
+          Actions:
+            - Name: TemplateSource
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: S3
+                Version: '1'
+              Configuration:
+                S3Bucket: {{ code_pipeline.S3_bucket_name }}
+                S3ObjectKey: {{ code_pipeline.S3_prefix_artifact }}
+              OutputArtifacts:
+                - Name: TemplateSource
+              RunOrder: '1'
+        - Name: Deploy-DEMO-VPC
+          Actions:
+            - Name: VPC
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              InputArtifacts:
+                - Name: TemplateSource
+              OutputArtifacts:
+                - Name: VpcStack
+              Configuration:
+                ActionMode: REPLACE_ON_FAILURE
+                RoleArn: !GetAtt [DEMORole, Arn]
+                StackName: {{ cloudformation.stack_name.vpc }}
+                TemplateConfiguration: !Sub "TemplateSource::{{ cloudformation.config_name.vpc }}"
+                TemplatePath: !Sub "TemplateSource::{{ cloudformation.template_name.vpc }}"
+                OutputFileName: VpcStack.json
+              RunOrder: '1'
+            - Name: Security
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              InputArtifacts:
+                - Name: TemplateSource
+                - Name: VpcStack
+              OutputArtifacts:
+                - Name: SGStack
+              Configuration:
+                ActionMode: REPLACE_ON_FAILURE
+                RoleArn: !GetAtt [DEMORole, Arn]
+                StackName: {{ cloudformation.stack_name.sg }}
+                TemplateConfiguration: !Sub "TemplateSource::{{ cloudformation.config_name.sg }}"
+                TemplatePath: !Sub "TemplateSource::{{ cloudformation.template_name.sg }}"
+                OutputFileName: SGStack.json
+                ParameterOverrides: !Sub |
+                  {
+                    "Vpc" : { "Fn::GetParam" : [ "VpcStack", "VpcStack.json", "Vpc" ]}
+                  }
+              RunOrder: '2'
+            - Name: KMS
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              InputArtifacts:
+                - Name: TemplateSource
+              OutputArtifacts:
+                - Name: KMSStackOutput
+              Configuration:
+                ActionMode: REPLACE_ON_FAILURE
+                RoleArn: !GetAtt [DEMORole, Arn]
+                StackName: {{ cloudformation.stack_name.kms }}
+                TemplateConfiguration: !Sub "TemplateSource::{{ cloudformation.config_name.kms }}"
+                TemplatePath: !Sub "TemplateSource::{{ cloudformation.template_name.kms }}"
+                OutputFileName: KMSStackOutput.json
+              RunOrder: '2'
+            - Name: RDS
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              InputArtifacts:
+                - Name: TemplateSource
+                - Name: VpcStack
+                - Name: SGStack
+              OutputArtifacts:
+                - Name: RDSStack
+              Configuration:
+                ActionMode: REPLACE_ON_FAILURE
+                RoleArn: !GetAtt [DEMORole, Arn]
+                StackName: {{ cloudformation.stack_name.rds }}
+                TemplateConfiguration: !Sub "TemplateSource::{{ cloudformation.config_name.rds }}"
+                TemplatePath: !Sub "TemplateSource::{{ cloudformation.template_name.rds }}"
+                OutputFileName: RDSStack.json
+                ParameterOverrides: !Sub |
+                  {
+                    "PrivateSubnetA" : { "Fn::GetParam" : [ "VpcStack", "VpcStack.json", "PrivateSubnetDefaultA" ]},
+                    "PrivateSubnetB" : { "Fn::GetParam" : [ "VpcStack", "VpcStack.json", "PrivateSubnetDefaultB" ]},
+                    "RDSSecurityGroups" : { "Fn::GetParam" : [ "SGStack", "SGStack.json", "RDSSecurityGroup" ]}
+                  }
+              RunOrder: '3'
+            - Name: EFS
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              InputArtifacts:
+                - Name: TemplateSource
+                - Name: VpcStack
+                - Name: SGStack
+                - Name: KMSStackOutput
+              OutputArtifacts:
+                - Name: EFS
+              Configuration:
+                ActionMode: REPLACE_ON_FAILURE
+                RoleArn: !GetAtt [DEMORole, Arn]
+                StackName: {{ cloudformation.stack_name.efs }}
+                TemplatePath: !Sub "TemplateSource::{{ cloudformation.template_name.efs }}"
+                OutputFileName: EFS.json
+                ParameterOverrides: !Sub |
+                  {
+                    "PrivateSubnetA" : { "Fn::GetParam" : [ "VpcStack", "VpcStack.json", "PrivateSubnetDefaultA" ]},
+                    "PrivateSubnetB" : { "Fn::GetParam" : [ "VpcStack", "VpcStack.json", "PrivateSubnetDefaultB" ]},
+                    "PrivateSubnetC" : { "Fn::GetParam" : [ "VpcStack", "VpcStack.json", "PrivateSubnetDefaultC" ]},
+                    "KmsKeyId" : { "Fn::GetParam" : [ "KMSStackOutput", "KMSStackOutput.json", "KeyId" ]},
+                    "EFSSecurityGroup" : { "Fn::GetParam" : [ "SGStack", "SGStack.json", "SecurityGroupEFS" ]}
+                  }
+              RunOrder: '3'
+        - Name: Deploy-AutoScaling-DEMO
+          Actions:
+            - Name: ASG
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              InputArtifacts:
+                - Name: TemplateSource
+                - Name: VpcStack
+                - Name: SGStack
+                - Name: EFS
+                - Name: RDSStack
+              OutputArtifacts:
+                - Name: ASGStack
+              Configuration:
+                ActionMode: REPLACE_ON_FAILURE
+                Capabilities: CAPABILITY_IAM
+                RoleArn: !GetAtt [DEMORole, Arn]
+                StackName: {{ cloudformation.stack_name.asg }}
+                TemplateConfiguration: !Sub "TemplateSource::{{ cloudformation.config_name.asg }}"
+                TemplatePath: !Sub "TemplateSource::{{ cloudformation.template_name.asg }}"
+                OutputFileName: ASGStack.json
+                ParameterOverrides: !Sub |
+                  {
+                    "AZs" : { "Fn::GetParam" : [ "VpcStack", "VpcStack.json", "AZs" ]},
+                    "VpcZ" : { "Fn::GetParam" : [ "VpcStack", "VpcStack.json", "VpcZoneIdentifiersPublic" ]},
+                    "VpcName" : { "Fn::GetParam" : [ "VpcStack", "VpcStack.json", "VpcName" ]},
+                    "ASG" : { "Fn::GetParam" : [ "SGStack", "SGStack.json", "ASG" ]},
+                    "EFS" : { "Fn::GetParam" : [ "EFS", "EFS.json", "EFS" ]},
+                    "MySQLDatabase" : { "Fn::GetParam" : [ "RDSStack", "RDSStack.json", "MySQLDatabase" ]}
+                  }
+              RunOrder: '4'
+
+  DEMORole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: ['sts:AssumeRole']
+          Effect: Allow
+          Principal:
+            Service: [cloudformation.amazonaws.com]
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: CloudFormationRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - 'autoscaling:*'
+                  - 's3:*'
+                  - 'ec2:*'
+                  - 'logs:*'
+                  - 'elasticache:*'
+                  - 'kms:*'
+                  - 'sqs:*'
+                  - 'rds:*'
+                  - 'iam:*'
+                  - 'elasticfilesystem:*'
+                  - 'elasticloadbalancing:*'
+                  - 'route53:*'
+                  - 'acm:*'
+                Effect: Allow
+                Resource: '*'
+
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: ['sts:AssumeRole']
+          Effect: Allow
+          Principal:
+            Service: [codepipeline.amazonaws.com]
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: CodePipelineAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - 's3:*'
+                - 'rds:*'
+                - 'logs:*'
+                - 'elasticfilesystem:*'
+                - 'cloudformation:CreateStack'
+                - 'cloudformation:DescribeStacks'
+                - 'cloudformation:DeleteStack'
+                - 'cloudformation:UpdateStack'
+                - 'cloudformation:CreateChangeSet'
+                - 'cloudformation:ExecuteChangeSet'
+                - 'cloudformation:DeleteChangeSet'
+                - 'cloudformation:DescribeChangeSet'
+                - 'cloudformation:SetStackPolicy'
+                - 'iam:PassRole'
+                - 'sns:Publish'
+                Effect: Allow
+                Resource: '*'

@@ -1,0 +1,19 @@
+- name: "Remove temporary files {{ result_dir }}"
+  file:
+    path: "./{{ result_dir }}"
+    state: absent
+
+- name: "Remove temporary files {{ temp_dir_cf }}"
+  file:
+    path: "./{{ temp_dir_cf }}"
+    state: absent
+
+- name: "Remove temporary files {{ temp_dir_pl }}"
+  file:
+    path: "./{{ temp_dir_pl }}"
+    state: absent
+
+- name: "Remove temporary files {{ temp_dir }}"
+  file:
+    path: "./{{ temp_dir }}"
+    state: absent

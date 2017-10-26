@@ -1,0 +1,14 @@
+{
+  "Parameters" : {    
+    "AppServerAMI" : "{{ ami_asg.results[0].ami_id }}",
+    "AppServerInstanceType": "{{ asg.AppServerInstanceType }}",
+    "KeyName": "{{ asg.KeyName }}",
+    "AppServersInstanceMax": "{{ asg.AppServersInstanceMax }}",
+    "AppServersInstanceMin": "{{ asg.AppServersInstanceMin }}",
+    "TarballBucket": "{{ asg.TarballBucket }}",
+    "TarballPath": "{{ asg.TarballPath }}",
+    "DBMasterPassword": "{{ asg.DBMasterPassword }}",
+    "DBMasterUsername": "{{ asg.DBMasterUsername }}",
+    "DBName": "{{ asg.DBName }}"
+  }
+}

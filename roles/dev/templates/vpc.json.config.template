@@ -1,0 +1,6 @@
+{
+  "Parameters" : {
+    "Environment" : "{{ account.name }}",
+    "VpcName" : "{{ vpc_demo.VpcName }}"
+  }
+}

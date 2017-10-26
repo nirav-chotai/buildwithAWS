@@ -1,0 +1,11 @@
+---
+# Ansible version required: 2.3.0-100
+# -------------------------------------
+# Execute: ansible-playbook -vvv ./playbooks/deploy-demo-stack.yml
+# -------------------------------------
+- hosts: localhost
+  gather_facts: no
+  connection: local
+
+  roles:
+    - dev

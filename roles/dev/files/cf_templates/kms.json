@@ -1,0 +1,86 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+
+    "Description": "KMS key Template",
+
+    "Metadata": {
+        "Comments": [
+            { "Ref": "Description" },
+            ""
+        ]
+    },
+
+    "Parameters": {
+
+        "KeyAliasName": {
+            "Description": "The name to use for the alias of the KMS key, must begin with alias/",
+            "Type": "String",
+            "Default": "alias/demo-rds"
+        },
+        "KeyDescription": {
+            "Description": "The description of the key",
+            "Type": "String",
+            "Default": "keys for demo-rds in eu-west-1"
+        }
+    },
+
+    "Resources": {
+        "KMSKey": {
+            "Type" : "AWS::KMS::Key",
+            "Properties" : {
+                "Description": {
+                    "Ref": "KeyDescription"
+                },
+                "EnableKeyRotation": "true",
+                "KeyPolicy": {
+                    "Version": "2012-10-17",
+                    "Id": "key-default-1",
+                    "Statement": [
+                        {
+                            "Sid": "Enable IAM User Permissions",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:aws:iam::",
+                                            {
+                                                "Ref": "AWS::AccountId"
+                                            },
+                                            ":root"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "Action": "kms:*",
+                            "Resource": "*"
+                        }
+                    ]
+                }
+            }
+        },
+        "KMSAlias": {
+            "Type" : "AWS::KMS::Alias",
+            "Properties" : {
+                "AliasName" : { "Ref": "KeyAliasName" },
+                "TargetKeyId" : { "Ref": "KMSKey" }
+            }
+        }
+    },
+
+    "Outputs": {
+        "KeyArn": {
+            "Description": "Arn of the KMS key",
+            "Value": { "Fn::GetAtt" : [ "KMSKey", "Arn" ] }
+        },
+        "KeyId": {
+            "Description": "Id of the KMS key",
+            "Value": { "Ref": "KMSKey" }
+        },
+        "KeyAlias": {
+            "Description": "The alias of the KMS key",
+            "Value": { "Ref": "KMSAlias"}
+        }
+    }
+}
