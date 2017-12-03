@@ -1,4 +1,4 @@
-# Create a random string used to construct temporary path to store intermediate aggregated data
+# Create random string used to construct temporary path to store intermediate aggregated data
 - shell: uuidgen
   register: uuid_build
 

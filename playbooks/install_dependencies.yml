@@ -1,7 +1,7 @@
 ---
 # Ansible version required: 2.3.0-100
 # -------------------------------------
-# Execute: ansible-playbook -vvv ./playbooks/install_dependencies.yml
+# Execute: ansible-playbook -vvvv ./playbooks/install_dependencies.yml
 # -------------------------------------
 - hosts: localhost
   gather_facts: no

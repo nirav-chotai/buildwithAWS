@@ -1,5 +1,5 @@
 ---
-# Tar up contents of dir
+# Tar up contents of directory
 # Documentation: http://docs.ansible.com/ansible/shell_module.html
 - name: "Zipping contents of {{ dir }}"
   shell: "zip {{ name }} *"

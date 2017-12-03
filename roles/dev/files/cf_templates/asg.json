@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "AutoScalingGroup Template for App server",
+  "Description": "AutoScalingGroup Template for App server.",
   "Metadata": {
     "Comments": [
       {

@@ -1,4 +1,4 @@
-- name: "Generate VPC template"
+- name: "Generate VPC template."
   template:
     src: "templates/vpc.json.template"
     dest: "{{ temp_dir_pl }}/{{ cloudformation.template_name.vpc }}"

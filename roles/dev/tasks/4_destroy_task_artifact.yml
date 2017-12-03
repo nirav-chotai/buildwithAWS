@@ -1,4 +1,4 @@
-- name: "Remove temporary files {{ result_dir }}"
+- name: "Remove temporary files from {{ result_dir }}"
   file:
     path: "./{{ result_dir }}"
     state: absent

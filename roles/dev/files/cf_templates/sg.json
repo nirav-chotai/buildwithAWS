@@ -5,7 +5,7 @@
             "Fn::Not" : [ {"Fn::Equals": [ "", { "Ref": "Vpc" } ] } ]
         }
     },
-    "Description": "Security groups template for AppServer and RDS",
+    "Description": "Security groups template for AppServer and RDS.",
     "Parameters": {
         "Vpc": {
             "Description": "Name of an existing VPC",

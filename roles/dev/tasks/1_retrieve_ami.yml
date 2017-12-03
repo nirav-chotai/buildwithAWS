@@ -1,5 +1,4 @@
 - ec2_ami_find:
-    #name: "debian-wheezy-amd64-hvm-2015-01-28-ebs"
     name: "amzn-ami-hvm-2016.03.3.x86_64-gp2"
     region: "us-east-1"
     sort: creationDate
