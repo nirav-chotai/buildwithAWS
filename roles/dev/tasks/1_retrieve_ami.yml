@@ -1,8 +1,11 @@
-- ec2_ami_find:
-    name: "amzn-ami-hvm-2016.03.3.x86_64-gp2"
-    region: "us-east-1"
-    sort: creationDate
-    sort_order: descending
-    sort_end: 1
-    no_result_action: fail
+- name: find latest AMI for server
+  ec2_ami_info:
+    owners: "amazon"
+    filters:
+      architecture: "x86_64"
+      name: "amzn-ami-hvm-2018.03.*-x86_64-gp2"
   register: ami_asg
+- name: now get the latest one
+  set_fact:
+    latest_ami: >
+      {{ ami_asg.images | sort(attribute='creation_date') | last }}

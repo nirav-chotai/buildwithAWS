@@ -1,6 +1,6 @@
 {
   "Parameters" : {    
-    "AppServerAMI" : "{{ ami_asg.results[0].ami_id }}",
+    "AppServerAMI" : "{{ latest_ami.image_id }}",
     "AppServerInstanceType": "{{ asg.AppServerInstanceType }}",
     "KeyName": "{{ asg.KeyName }}",
     "AppServersInstanceMax": "{{ asg.AppServersInstanceMax }}",

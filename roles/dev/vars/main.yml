@@ -1,7 +1,7 @@
 code_pipeline:
   email:                  niravchotai.ce@gmail.com
   name:                   demo-deploy
-  S3_bucket_name:         demo-new-data-pipeline-{{ account.region }}
+  S3_bucket_name:         demo-data-pipeline-{{ account.region }}
   S3_prefix_artifact:     demo-deploy-package.zip
 
 cloudformation:
