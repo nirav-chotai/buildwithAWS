@@ -20,3 +20,7 @@ ansible-playbook -vvvv ./playbooks/deploy-demo-stack.yml
 
 ![CodePipeline](images/pipeline.png)
 
+## LAMP Stack Deployment with PHP and RDS:
+
+![LAMP Stack with PHP and RDS](images/php.png)
+
