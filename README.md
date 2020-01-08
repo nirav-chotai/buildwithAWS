@@ -10,6 +10,10 @@ Default region name [None]: us-east-1
 Default output format [None]: json
 ```
 
+## Creating a Key Pair
+
+Create "demo-us-east-1" key pair following [Creating a Key Pair](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html#having-ec2-create-your-key-pair)
+
 ## Run the ansible-playbook
 
 ```
